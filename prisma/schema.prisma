@@ -1,0 +1,182 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:../server/prisma/dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Club {
+  id          String   @id @default(uuid())
+  schoolName  String
+  clubName    String
+  inviteCode  String   @unique // 6자리 가입 초대코드
+  createdAt   DateTime @default(now())
+
+  users       User[]
+  seasons     Season[]
+  invitations Invitation[]
+}
+
+model User {
+  id              String   @id @default(uuid())
+  clubId          String
+  loginId         String   @unique // 학번 (로그인 ID)
+  passwordHash    String
+  name            String
+  phone           String   // AES-256 암호화하여 저장
+  role            String   // ADMIN, MANAGER, MEMBER
+  status          String   // PENDING, ACTIVE, INACTIVE
+  jerseyNumber    Int?
+  primaryPosition String?  // P, C, 1B, 2B, 3B, SS, LF, CF, RF, DH
+  battingHand     String?  // L, R, S
+  throwingHand    String?  // L, R
+  joinedAt        DateTime @default(now())
+
+  club            Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
+
+  attendances     Attendance[]
+  lineups         Lineup[]
+  battingRecords  BattingRecord[]
+  pitchingRecords PitchingRecord[]
+  notifications   Notification[]
+  reviewedInvitations Invitation[] @relation("ReviewedBy")
+}
+
+model Season {
+  id             String   @id @default(uuid())
+  clubId         String
+  name           String   // 예: "2026 상반기"
+  startDate      DateTime
+  endDate        DateTime
+  inningsPerGame Int      @default(7) // 정규 이닝 수
+  mercyRuleDiff  Int?     // 콜드게임 점수차
+  isActive       Boolean  @default(true)
+
+  club           Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  games          Game[]
+}
+
+model Invitation {
+  id               String   @id @default(uuid())
+  clubId           String
+  applicantName    String
+  applicantLoginId String
+  status           String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  reviewedBy       String?
+  createdAt        DateTime @default(now())
+
+  club             Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  reviewer         User?    @relation("ReviewedBy", fields: [reviewedBy], references: [id])
+}
+
+model Game {
+  id                 String   @id @default(uuid())
+  seasonId           String
+  gameDate           DateTime
+  location           String
+  opponentName       String
+  gameType           String   // PRACTICE, LEAGUE, TOURNAMENT, FRIENDLY
+  attendanceDeadline DateTime
+  status             String   @default("SCHEDULED") // SCHEDULED, IN_PROGRESS, RECORD_PENDING, CONFIRMED
+  ourScore           Int      @default(0)
+  opponentScore      Int      @default(0)
+  result             String?  // WIN, LOSS, DRAW (최종 확정 시 계산)
+  inningScores       String   @default("[]") // JSON string: [{"inning":1, "our":2, "opp":0}, ...]
+  confirmedBy        String?
+  createdBy          String
+
+  season             Season   @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  attendances        Attendance[]
+  lineups            Lineup[]
+  battingRecords     BattingRecord[]
+  pitchingRecords    PitchingRecord[]
+}
+
+model Attendance {
+  id             String   @id @default(uuid())
+  gameId         String
+  userId         String
+  response       String   @default("UNDECIDED") // ATTEND, ABSENT, UNDECIDED
+  absentReason   String?
+  actualAttended Boolean  @default(false)
+  respondedAt    DateTime @default(now()) @updatedAt
+
+  game           Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([gameId, userId])
+}
+
+model Lineup {
+  id                String   @id @default(uuid())
+  gameId            String
+  userId            String
+  battingOrder      Int?     // 1~9, 대타/대수비 교체 명단은 null
+  position          String   // P, C, 1B, 2B, 3B, SS, LF, CF, RF, DH, SUB
+  isStarter         Boolean  @default(true)
+  isStartingPitcher Boolean  @default(false)
+
+  game              Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([gameId, userId])
+}
+
+model BattingRecord {
+  id               String   @id @default(uuid())
+  gameId           String
+  userId           String
+  plateAppearances Int      @default(0) // 타석
+  atBats           Int      @default(0) // 타수
+  hits             Int      @default(0) // 안타
+  doubles          Int      @default(0) // 2루타
+  triples          Int      @default(0) // 3루타
+  homeRuns         Int      @default(0) // 홈런
+  runs             Int      @default(0) // 득점
+  rbis             Int      @default(0) // 타점
+  walks            Int      @default(0) // 볼넷
+  strikeouts       Int      @default(0) // 삼진
+  stolenBases      Int      @default(0) // 도루
+  hitByPitch       Int      @default(0) // 사구
+  sacrifice        Int      @default(0) // 희생타 (희생번트 + 희생플라이 통합)
+
+  game             Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([gameId, userId])
+}
+
+model PitchingRecord {
+  id               String   @id @default(uuid())
+  gameId           String
+  userId           String
+  inningsPitched   Float    @default(0.0) // 이닝 (예: 5.2 = 5와 2/3이닝)
+  hitsAllowed      Int      @default(0) // 피안타
+  runsAllowed      Int      @default(0) // 실점
+  earnedRuns       Int      @default(0) // 자책점
+  walksAllowed     Int      @default(0) // 볼넷 허용
+  strikeouts       Int      @default(0) // 탈삼진
+  homeRunsAllowed  Int      @default(0) // 피홈런
+  pitchCount       Int      @default(0) // 투구수
+  decision         String   @default("NONE") // WIN, LOSS, SAVE, HOLD, NONE
+
+  game             Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([gameId, userId])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  type      String   // GAME_CREATED, GAME_UPDATED, ROLE_CHANGED, JOIN_APPROVED, RECORD_CONFIRMED 등
+  title     String
+  body      String
+  linkUrl   String?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
