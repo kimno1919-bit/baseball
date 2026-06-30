@@ -72,7 +72,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
   // 로그인 상태가 아닐 때는 헤더/푸터 없이 화면만 렌더링 (로그인, 회원가입 페이지용)
   const isAuthPage = pathname === "/login" || pathname === "/register" || pathname === "/";
   if (isAuthPage) {
-    return <div className="min-h-screen">{children}</div>;
+    return (
+      <div className="min-h-screen flex flex-col justify-between">
+        <div>{children}</div>
+        <Footer />
+      </div>
+    );
   }
 
   // 로딩 중일 때
