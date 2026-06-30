@@ -5,6 +5,7 @@ import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Shield, Lock, User as UserIcon, AlertCircle } from "lucide-react";
+import { Footer } from "@/components/Footer";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -44,8 +45,9 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-light/20 via-customBg-light to-secondary-light/10 dark:from-primary-dark/10 dark:via-customBg-dark dark:to-secondary-dark/5 p-4">
-      <div className="w-full max-w-md bg-white/80 dark:bg-surface-dark/60 backdrop-blur-xl border border-customBorder-light dark:border-customBorder-dark p-8 rounded-3xl shadow-2xl space-y-6">
+    <div className="min-h-screen flex flex-col items-center justify-between bg-gradient-to-br from-primary-light/20 via-customBg-light to-secondary-light/10 dark:from-primary-dark/10 dark:via-customBg-dark dark:to-secondary-dark/5 p-4">
+      <div className="flex-1 flex flex-col justify-center w-full max-w-md">
+        <div className="bg-white/80 dark:bg-surface-dark/60 backdrop-blur-xl border border-customBorder-light dark:border-customBorder-dark p-8 rounded-3xl shadow-2xl space-y-6">
         
         {/* 헤더 및 로고 */}
         <div className="text-center space-y-2">
@@ -124,6 +126,10 @@ export default function LoginPage() {
           </Link>
         </div>
 
+        </div>
+      </div>
+      <div className="w-full max-w-md mt-8">
+        <Footer />
       </div>
     </div>
   );

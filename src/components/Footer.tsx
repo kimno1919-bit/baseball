@@ -19,7 +19,7 @@ export function Footer() {
       </div>
 
       <div className="space-y-1 text-center sm:text-left">
-        <p>정보관리책임자: 언주중학교 한가람 타이탄즈 야구부 관리자 (언주중학교 대표 이메일)</p>
+        <p>정보관리책임자: 언주중학교 야구부 관리자</p>
         <p>© 2026 Eonju Middle School Baseball Club. All rights reserved.</p>
       </div>
 
@@ -99,8 +99,7 @@ export function Footer() {
               
               <p className="font-bold pt-2">6. 개인정보 보호책임자 및 담당자</p>
               <p>서비스 내 개인정보 보호에 대한 책임 및 문의사항은 아래 정보관리책임자에게 연락해주시기 바랍니다.<br />
-              - 이름: 언주중학교 한가람 타이탄즈 관리자<br />
-              - 이메일: 언주중학교 대표 이메일</p>
+              - 이름: 언주중학교 야구부 관리자</p>
 
               <p className="text-xs text-muted-foreground pt-4">*본 방침은 2026년 6월 30일부터 시행됩니다.*</p>
             </div>

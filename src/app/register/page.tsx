@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Shield, ChevronLeft, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Footer } from "@/components/Footer";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -95,8 +96,9 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-light/20 via-customBg-light to-secondary-light/10 dark:from-primary-dark/10 dark:via-customBg-dark dark:to-secondary-dark/5 p-4 py-8">
-      <div className="w-full max-w-lg bg-white/80 dark:bg-surface-dark/60 backdrop-blur-xl border border-customBorder-light dark:border-customBorder-dark p-8 rounded-3xl shadow-2xl space-y-6">
+    <div className="min-h-screen flex flex-col items-center justify-between bg-gradient-to-br from-primary-light/20 via-customBg-light to-secondary-light/10 dark:from-primary-dark/10 dark:via-customBg-dark dark:to-secondary-dark/5 p-4 py-8">
+      <div className="flex-1 flex flex-col justify-center w-full max-w-lg">
+        <div className="bg-white/80 dark:bg-surface-dark/60 backdrop-blur-xl border border-customBorder-light dark:border-customBorder-dark p-8 rounded-3xl shadow-2xl space-y-6">
         
         {/* 상단 네비게이션 */}
         <div className="flex items-center justify-between border-b border-customBorder-light dark:border-customBorder-dark pb-4">
@@ -297,6 +299,10 @@ export default function RegisterPage() {
           </button>
         </form>
 
+        </div>
+      </div>
+      <div className="w-full max-w-lg mt-8">
+        <Footer />
       </div>
     </div>
   );
