@@ -18,6 +18,7 @@ import {
   X,
   Settings
 } from "lucide-react";
+import { Footer } from "./Footer";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession();
@@ -229,8 +230,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </header>
 
         {/* 메인 콘텐츠 영역 */}
-        <main className="flex-1 p-6 md:p-8 max-w-7xl w-full mx-auto overflow-y-auto">
-          {children}
+        <main className="flex-1 p-6 md:p-8 max-w-7xl w-full mx-auto overflow-y-auto flex flex-col justify-between">
+          <div>{children}</div>
+          <Footer />
         </main>
 
         {/* 3. 모바일 하단 내비게이션 바 (md 미만 노출) */}
