@@ -96,7 +96,7 @@ export async function PUT(
     }
 
     const body = await req.json();
-    const { attendances } = body; // 배열 형태: [{ userId: string, actualAttended: boolean }, ...]
+    const { attendances } = body; // 배열 형태: [{ userId: string, actualAttended: boolean, actualStatus: string }, ...]
 
     if (!attendances || !Array.isArray(attendances)) {
       return errorResponse("올바른 형식의 출결 목록 데이터를 제공해주세요.");
@@ -114,6 +114,7 @@ export async function PUT(
           },
           data: {
             actualAttended: !!item.actualAttended,
+            actualStatus: item.actualStatus || "UNKNOWN",
           },
         })
       )

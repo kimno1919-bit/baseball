@@ -17,16 +17,42 @@ export async function GET() {
       where: {
         clubId: user.clubId,
       },
+      include: {
+        attendances: true,
+        conductRecords: true,
+      },
       orderBy: [
         { role: "asc" }, // ADMIN -> MANAGER -> MEMBER 순서 정렬 유도
         { name: "asc" },
       ],
     });
 
-    // 전화번호 복호화 및 마스킹 처리
+    // 전화번호 복호화 및 마스킹 처리, 통계 집계
     const processedMembers = members.map((m) => {
       const decrypted = decryptPhone(m.phone);
       const masked = maskPhone(decrypted);
+      
+      // 출결 집계
+      let presentCount = 0;
+      let lateCount = 0;
+      let unexcusedCount = 0;
+      
+      m.attendances.forEach((a) => {
+        if (a.actualStatus === "PRESENT") presentCount++;
+        else if (a.actualStatus === "LATE") lateCount++;
+        else if (a.actualStatus === "UNEXCUSED") unexcusedCount++;
+        // 기존 boolean fallback (마이그레이션 호환)
+        else if (a.actualStatus === "UNKNOWN" && a.actualAttended) presentCount++;
+      });
+      
+      // 상벌점 집계
+      let meritPoints = 0;
+      let demeritPoints = 0;
+      m.conductRecords.forEach((c) => {
+        if (c.points > 0) meritPoints += c.points;
+        else if (c.points < 0) demeritPoints += c.points;
+      });
+
       return {
         id: m.id,
         loginId: m.loginId,
@@ -39,6 +65,17 @@ export async function GET() {
         battingHand: m.battingHand,
         throwingHand: m.throwingHand,
         joinedAt: m.joinedAt,
+        
+        // v2.4 신규 집계 데이터
+        conductStatus: m.conductStatus,
+        suspensionRemaining: m.suspensionRemaining,
+        conductTotal: m.conductTotal,
+        remarks: m.remarks,
+        presentCount,
+        lateCount,
+        unexcusedCount,
+        meritPoints,
+        demeritPoints,
       };
     });
 

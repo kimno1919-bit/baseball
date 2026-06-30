@@ -23,14 +23,14 @@ export async function GET(
         attendances: {
           include: {
             user: {
-              select: { id: true, name: true, jerseyNumber: true, primaryPosition: true },
+              select: { id: true, name: true, jerseyNumber: true, primaryPosition: true, conductStatus: true, suspensionRemaining: true },
             },
           },
         },
         lineups: {
           include: {
             user: {
-              select: { id: true, name: true, jerseyNumber: true },
+              select: { id: true, name: true, jerseyNumber: true, conductStatus: true, suspensionRemaining: true },
             },
           },
           orderBy: {

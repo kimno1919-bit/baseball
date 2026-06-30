@@ -44,6 +44,7 @@ export const authOptions: NextAuthOptions = {
           role: user.role,
           clubId: user.clubId,
           status: user.status,
+          conductStatus: user.conductStatus,
         };
       },
     }),
@@ -56,6 +57,7 @@ export const authOptions: NextAuthOptions = {
         token.role = user.role;
         token.clubId = user.clubId;
         token.status = user.status;
+        token.conductStatus = (user as any).conductStatus;
       }
       return token;
     },
@@ -66,6 +68,7 @@ export const authOptions: NextAuthOptions = {
         session.user.role = token.role as string;
         session.user.clubId = token.clubId as string;
         session.user.status = token.status as string;
+        session.user.conductStatus = token.conductStatus as string;
       }
       return session;
     },

@@ -4,8 +4,8 @@ import { Providers } from "@/components/Providers";
 import { Layout } from "@/components/Layout";
 
 export const metadata: Metadata = {
-  title: "한가람 타이탄즈 - 야구 스포츠클럽 관리 시스템",
-  description: "학교 스포츠클럽 야구반을 위한 올인원 출결·기록·시즌 통계 분석 웹앱",
+  title: "언주중학교 스포츠클럽 야구부 - 관리 시스템",
+  description: "Next.js, NextAuth, Prisma를 활용한 클럽 관리 시스템",
 };
 
 export const viewport = {

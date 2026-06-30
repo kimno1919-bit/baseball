@@ -14,6 +14,7 @@ import {
   convertIpToValue,
   convertValueToIp,
 } from "@/lib/stats";
+import { calculateTeamSummary } from "@/lib/stats-team";
 
 export async function GET(req: Request) {
   try {
@@ -210,77 +211,28 @@ export async function GET(req: Request) {
     // ============================================
     // CASE B: 팀 통계 대시보드 (전체 요약 & 랭킹)
     // ============================================
-    // 1. 확정된 모든 경기 조회
-    const confirmedGames = await prisma.game.findMany({
-      where: { seasonId, status: "CONFIRMED" },
-      orderBy: { gameDate: "asc" },
-    });
-
-    let wins = 0, losses = 0, draws = 0;
-    let ourScoreSum = 0, opponentScoreSum = 0;
-
-    confirmedGames.forEach((g) => {
-      ourScoreSum += g.ourScore;
-      opponentScoreSum += g.opponentScore;
-      if (g.result === "WIN") wins++;
-      else if (g.result === "LOSS") losses++;
-      else if (g.result === "DRAW") draws++;
-    });
-
-    const totalGames = confirmedGames.length;
-    const wpct = calculateWpct(wins, losses);
-    const avgRuns = totalGames > 0 ? ourScoreSum / totalGames : 0;
-    const avgRunsAllowed = totalGames > 0 ? opponentScoreSum / totalGames : 0;
+    // 1. 연습/친선 경기 요약
+    const practiceSummary = await calculateTeamSummary(prisma, seasonId, ["PRACTICE", "FRIENDLY"], inningsPerGame);
+    // 2. 대회/리그 경기 요약
+    const officialSummary = await calculateTeamSummary(prisma, seasonId, ["LEAGUE", "TOURNAMENT"], inningsPerGame);
+    // 3. 전체 종합 요약
+    const summary = await calculateTeamSummary(prisma, seasonId, ["PRACTICE", "FRIENDLY", "LEAGUE", "TOURNAMENT"], inningsPerGame);
 
     // 최근 5경기 트렌드 데이터
-    const recentGames = confirmedGames.slice(-5).map((g) => ({
+    const recentGames = await prisma.game.findMany({
+      where: { seasonId, status: "CONFIRMED" },
+      orderBy: { gameDate: "desc" },
+      take: 5,
+    }).then(games => games.reverse().map(g => ({
       gameId: g.id,
       opponent: g.opponentName,
       ourScore: g.ourScore,
       opponentScore: g.opponentScore,
       result: g.result,
       date: g.gameDate.toISOString().substring(5, 10),
-    }));
+    })));
 
-    // 2. 전체 부원의 실시간 기록 합산하여 팀 종합 스탯 산출
-    const allBatting = await prisma.battingRecord.findMany({
-      where: { game: { seasonId, status: "CONFIRMED" } },
-    });
-
-    let teamBat = { atBats: 0, hits: 0, doubles: 0, triples: 0, homeRuns: 0, walks: 0, hitByPitch: 0, sacrifice: 0 };
-    allBatting.forEach((b) => {
-      teamBat.atBats += b.atBats;
-      teamBat.hits += b.hits;
-      teamBat.doubles += b.doubles;
-      teamBat.triples += b.triples;
-      teamBat.homeRuns += b.homeRuns;
-      teamBat.walks += b.walks;
-      teamBat.hitByPitch += b.hitByPitch;
-      teamBat.sacrifice += b.sacrifice;
-    });
-
-    const teamAvg = calculateAvg(teamBat.hits, teamBat.atBats);
-    const teamObp = calculateObp(teamBat.hits, teamBat.walks, teamBat.hitByPitch, teamBat.atBats, teamBat.sacrifice);
-    const teamSlg = calculateSlg(teamBat.hits, teamBat.doubles, teamBat.triples, teamBat.homeRuns, teamBat.atBats);
-    const teamOps = calculateOps(teamObp, teamSlg);
-
-    const allPitching = await prisma.pitchingRecord.findMany({
-      where: { game: { seasonId, status: "CONFIRMED" } },
-    });
-
-    let teamPitch = { inningsPitchedValue: 0.0, walksAllowed: 0, hitsAllowed: 0, earnedRuns: 0 };
-    allPitching.forEach((p) => {
-      teamPitch.inningsPitchedValue += convertIpToValue(p.inningsPitched);
-      teamPitch.walksAllowed += p.walksAllowed;
-      teamPitch.hitsAllowed += p.hitsAllowed;
-      teamPitch.earnedRuns += p.earnedRuns;
-    });
-
-    const teamIp = convertValueToIp(teamPitch.inningsPitchedValue);
-    const teamEra = calculateEra(teamPitch.earnedRuns, teamIp, inningsPerGame);
-    const teamWhip = calculateWhip(teamPitch.walksAllowed, teamPitch.hitsAllowed, teamIp);
-
-    // 3. 랭킹 TOP 3 데이터 추출
+    // 4. 랭킹 TOP 3 데이터 추출
     // (여기서는 DB에서 그룹핑하여 선수별 성적 집계한 뒤 정렬하여 추출)
     const userSummaryList = await prisma.user.findMany({
       where: { clubId: user.clubId, status: "ACTIVE" },
@@ -357,17 +309,9 @@ export async function GET(req: Request) {
       .slice(0, 3);
 
     return NextResponse.json({
-      summary: {
-        totalGames,
-        wins,
-        losses,
-        draws,
-        wpct,
-        avgRuns,
-        avgRunsAllowed,
-        teamBatting: { avg: teamAvg, obp: teamObp, slg: teamSlg, ops: teamOps },
-        teamPitching: { era: teamEra, whip: teamWhip, inningsPitched: teamIp },
-      },
+      summary,
+      practiceSummary,
+      officialSummary,
       recentGames,
       rankings: {
         avg: topAvg,

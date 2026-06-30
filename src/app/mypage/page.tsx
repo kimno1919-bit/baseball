@@ -71,6 +71,7 @@ export default function MyPage() {
             // 전화번호는 API에서 마스킹 형태로 오거나 마이페이지 정보 로드를 따로 짤 수 있지만,
             // 수정 시 새로 채워 쓰거나 빈칸일 시 기존값 유지하도록 처리함.
           }));
+          // Conduct info moved to /attendance
         }
       } catch (err) {
         console.error(err);
@@ -97,6 +98,7 @@ export default function MyPage() {
       // 3. 시즌
       const sRes = await fetch("/api/seasons");
       if (sRes.ok) setSeasons(await sRes.json());
+
     } catch (err) {
       console.error(err);
     }
@@ -230,6 +232,7 @@ export default function MyPage() {
     }
   };
 
+
   return (
     <div className="space-y-6">
       
@@ -294,6 +297,8 @@ export default function MyPage() {
                 <FolderGit2 className="w-4 h-4" />
                 시즌 일정 관리
               </button>
+
+
             </>
           )}
         </div>
@@ -333,6 +338,7 @@ export default function MyPage() {
                   <span>{profileSuccess}</span>
                 </div>
               )}
+
 
               <form onSubmit={handleProfileSubmit} className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -595,7 +601,7 @@ export default function MyPage() {
                     type="submit"
                     className="sm:col-span-2 py-2.5 bg-primary-light hover:bg-primary-light/95 dark:bg-primary-dark dark:text-customBg-dark text-white font-bold rounded-xl shadow-md transition-all flex items-center justify-center gap-1"
                   >
-                    <Plus className="w-4 h-4" /> 시즌 개막 생성
+                    시즌 개막 생성
                   </button>
                 </form>
               </div>
@@ -633,6 +639,7 @@ export default function MyPage() {
 
             </div>
           )}
+
 
         </div>
 

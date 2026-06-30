@@ -26,7 +26,7 @@ async function main() {
     update: {},
     create: {
       schoolName: "한가람고등학교",
-      clubName: "한가람 타이탄즈",
+      clubName: "언주중학교 스포츠클럽 야구부",
       inviteCode: "BASE26",
     },
   });

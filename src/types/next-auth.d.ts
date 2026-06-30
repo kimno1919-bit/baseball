@@ -8,6 +8,7 @@ declare module "next-auth" {
       role: string;
       clubId: string;
       status: string;
+      conductStatus: string;
     } & DefaultSession["user"];
   }
 
@@ -17,5 +18,6 @@ declare module "next-auth" {
     role: string;
     clubId: string;
     status: string;
+    conductStatus: string;
   }
 }

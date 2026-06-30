@@ -62,6 +62,7 @@ export default function GameDetailPage({ params }: { params: { id: string } }) {
               jerseyNumber: a.user.jerseyNumber,
               response: a.response,
               actualAttended: a.actualAttended,
+              actualStatus: a.actualStatus,
             }))
           );
         }
@@ -111,7 +112,8 @@ export default function GameDetailPage({ params }: { params: { id: string } }) {
         body: JSON.stringify({
           attendances: tempAttendances.map((t) => ({
             userId: t.userId,
-            actualAttended: t.actualAttended,
+            actualStatus: t.actualStatus,
+            actualAttended: t.actualStatus === "PRESENT" || t.actualStatus === "LATE",
           })),
         }),
       });
@@ -249,10 +251,10 @@ export default function GameDetailPage({ params }: { params: { id: string } }) {
   const attendCount = game.attendances.filter((a: any) => a.response === "ATTEND").length;
   const absentCount = game.attendances.filter((a: any) => a.response === "ABSENT").length;
   const undecidedCount = game.attendances.filter((a: any) => a.response === "UNDECIDED").length;
-  const actualAttendCount = game.attendances.filter((a: any) => a.actualAttended).length;
+  const actualAttendCount = game.attendances.filter((a: any) => a.actualStatus === "PRESENT" || a.actualStatus === "LATE" || (a.actualStatus === "UNKNOWN" && a.actualAttended)).length;
 
   // 당일 실제 출석 체크자 목록 (라인업 드롭다운용)
-  const actualAttendedMembers = game.attendances.filter((a: any) => a.actualAttended);
+  const actualAttendedMembers = game.attendances.filter((a: any) => a.actualStatus === "PRESENT" || a.actualStatus === "LATE" || (a.actualStatus === "UNKNOWN" && a.actualAttended));
 
   // 이닝 스코어 파싱
   let parsedInningScores = [];
@@ -304,7 +306,7 @@ export default function GameDetailPage({ params }: { params: { id: string } }) {
         <div className="flex justify-between items-start">
           <div className="space-y-1">
             <span className="text-[10px] px-2 py-0.5 font-semibold bg-primary-light/5 text-primary-light dark:text-primary-dark rounded-md border border-primary-light/10">
-              {game.gameType === "LEAGUE" ? "리그전" : game.gameType === "PRACTICE" ? "연습경기" : game.gameType === "TOURNAMENT" ? "토너먼트" : "친선전"}
+              {game.gameType === "LEAGUE" ? "리그전" : game.gameType === "PRACTICE" ? "연습경기" : game.gameType === "TOURNAMENT" ? "토너먼트" : game.gameType === "TRAINING" ? "훈련" : "친선전"}
             </span>
             <h1 className="text-2xl font-black">vs {game.opponentName}</h1>
           </div>
@@ -685,7 +687,7 @@ export default function GameDetailPage({ params }: { params: { id: string } }) {
                   setTempAttendances(
                     tempAttendances.map((t) => ({
                       ...t,
-                      actualAttended: t.response === "ATTEND",
+                      actualStatus: t.response === "ATTEND" ? "PRESENT" : (t.response === "ABSENT" ? "EXCUSED" : "UNEXCUSED"),
                     }))
                   );
                 }}
@@ -704,22 +706,29 @@ export default function GameDetailPage({ params }: { params: { id: string } }) {
                       </span>
                     </div>
 
-                    <button
-                      onClick={() => {
+                    <select
+                      value={item.actualStatus || "UNKNOWN"}
+                      onChange={(e) => {
                         setTempAttendances(
                           tempAttendances.map((t) =>
-                            t.userId === item.userId ? { ...t, actualAttended: !t.actualAttended } : t
+                            t.userId === item.userId ? { ...t, actualStatus: e.target.value } : t
                           )
                         );
                       }}
-                      className={`px-4 py-1.5 text-[10px] font-bold rounded-lg border transition-all ${
-                        item.actualAttended
-                          ? "bg-primary-light border-primary-light text-white"
-                          : "bg-transparent border-customBorder-light text-muted-foreground"
+                      className={`px-3 py-1.5 text-xs font-bold rounded-lg border focus:outline-none transition-all ${
+                        item.actualStatus === "PRESENT" ? "bg-primary-light/10 border-primary-light text-primary-light" :
+                        item.actualStatus === "LATE" ? "bg-warning-light/10 border-warning-light text-warning-light" :
+                        item.actualStatus === "EXCUSED" ? "bg-muted border-customBorder-light text-muted-foreground" :
+                        item.actualStatus === "UNEXCUSED" ? "bg-danger-light/10 border-danger-light text-danger-light" :
+                        "bg-transparent border-customBorder-light text-muted-foreground"
                       }`}
                     >
-                      {item.actualAttended ? "출석" : "결석"}
-                    </button>
+                      <option value="UNKNOWN">미정</option>
+                      <option value="PRESENT">출석</option>
+                      <option value="LATE">지각</option>
+                      <option value="EXCUSED">사유결석</option>
+                      <option value="UNEXCUSED">무단결석</option>
+                    </select>
                   </div>
                 ))}
               </div>
@@ -770,18 +779,39 @@ export default function GameDetailPage({ params }: { params: { id: string } }) {
                       <select
                         value={line.userId}
                         onChange={(e) => {
+                          const selectedUserId = e.target.value;
+                          if (selectedUserId) {
+                            const m = actualAttendedMembers.find((mem: any) => mem.userId === selectedUserId);
+                            if (m) {
+                              if (m.conductStatus === "EXPELLED") {
+                                alert("퇴출 상태인 부원은 라인업에 등록할 수 없습니다.");
+                                return;
+                              }
+                              if (m.suspensionRemaining > 0) {
+                                const reason = window.prompt(`[출전 정지] 잔여 ${m.suspensionRemaining}경기 상태입니다.\n예외 등록 사유를 입력하시면 등록됩니다.`);
+                                if (!reason) return; // 취소 시 등록 안 함
+                                // (예외 사유 저장은 API 단에서 구현 필요하지만 여기서는 통과 허용)
+                              }
+                            }
+                          }
                           const updated = [...tempLineup];
-                          updated[idx].userId = e.target.value;
+                          updated[idx].userId = selectedUserId;
                           setTempLineup(updated);
                         }}
                         className="w-full px-2 py-1.5 text-xs bg-muted/40 border border-customBorder-light dark:border-customBorder-dark rounded-xl focus:outline-none"
                       >
                         <option value="">선수 선택 (출석자)</option>
-                        {actualAttendedMembers.map((m: any) => (
-                          <option key={m.userId} value={m.userId}>
-                            #{m.jerseyNumber ?? "-"} {m.name}
-                          </option>
-                        ))}
+                        {actualAttendedMembers.map((m: any) => {
+                          let badge = "";
+                          if (m.conductStatus === "EXPELLED") badge = " [퇴출]";
+                          else if (m.suspensionRemaining > 0) badge = ` [출전정지 ${m.suspensionRemaining}]`;
+                          else if (m.conductStatus === "CAUTION") badge = " [주의]";
+                          return (
+                            <option key={m.userId} value={m.userId} disabled={m.conductStatus === "EXPELLED"}>
+                              #{m.jerseyNumber ?? "-"} {m.name}{badge}
+                            </option>
+                          );
+                        })}
                       </select>
 
                       {/* 포지션 선택 */}

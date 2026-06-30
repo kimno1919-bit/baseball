@@ -8,7 +8,7 @@ import { useAppStore } from "@/lib/store";
 import { 
   Home, 
   Calendar, 
-  BarChart3, 
+  BarChart2, 
   User, 
   Bell, 
   LogOut, 
@@ -60,10 +60,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
   }, [status, fetchNotifications]);
 
   const navItems = [
-    { name: "홈", path: "/dashboard", icon: Home },
-    { name: "경기 일정", path: "/games", icon: Calendar },
-    { name: "시즌 통계", path: "/stats", icon: BarChart3 },
-    { name: "마이페이지", path: "/mypage", icon: User },
+    { name: "홈", path: "/", icon: Home },
+    { name: "훈련 및 경기 일정", path: "/games", icon: Calendar },
+    { name: "팀 기록", path: "/stats/team", icon: BarChart2 },
+    { name: "개인 기록", path: "/stats/personal", icon: User },
+    { name: "출결 현황", path: "/attendance", icon: Bell },
+    { name: "마이페이지", path: "/mypage", icon: Settings },
   ];
 
   // 로그인 상태가 아닐 때는 헤더/푸터 없이 화면만 렌더링 (로그인, 회원가입 페이지용)
@@ -94,7 +96,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <div>
           <div className="flex items-center gap-3 mb-8">
             <span className="text-xl font-bold tracking-wider text-primary-light dark:text-primary-dark">
-              TITANS CLUB
+              언주중학교
             </span>
           </div>
 

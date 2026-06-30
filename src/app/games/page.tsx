@@ -5,16 +5,15 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { 
-  Calendar, 
+  Calendar as CalendarIcon, 
   MapPin, 
   Clock, 
   Plus, 
   AlertCircle, 
   Check, 
   X, 
-  ChevronRight, 
-  Users,
-  Award
+  ChevronRight,
+  ChevronLeft
 } from "lucide-react";
 
 export default function GamesPage() {
@@ -25,9 +24,11 @@ export default function GamesPage() {
   const [seasons, setSeasons] = useState<any[]>([]);
   const [selectedSeasonId, setSelectedSeasonId] = useState("");
   const [games, setGames] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<"scheduled" | "confirmed">("scheduled");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // 캘린더 상태
+  const [currentDate, setCurrentDate] = useState(new Date());
 
   // 경기 등록 폼 상태
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -36,7 +37,7 @@ export default function GamesPage() {
     gameDate: "",
     location: "",
     opponentName: "",
-    gameType: "LEAGUE", // PRACTICE, LEAGUE, TOURNAMENT, FRIENDLY
+    gameType: "LEAGUE", 
     attendanceDeadline: "",
   });
 
@@ -44,7 +45,6 @@ export default function GamesPage() {
   const [absentGameId, setAbsentGameId] = useState<string | null>(null);
   const [absentReason, setAbsentReason] = useState("");
 
-  // 1. 시즌 로드
   useEffect(() => {
     async function loadSeasons() {
       try {
@@ -53,11 +53,8 @@ export default function GamesPage() {
           const data = await res.json();
           setSeasons(data);
           const active = data.find((s: any) => s.isActive);
-          if (active) {
-            setSelectedSeasonId(active.id);
-          } else if (data.length > 0) {
-            setSelectedSeasonId(data[0].id);
-          }
+          if (active) setSelectedSeasonId(active.id);
+          else if (data.length > 0) setSelectedSeasonId(data[0].id);
         }
       } catch (err) {
         console.error(err);
@@ -66,20 +63,17 @@ export default function GamesPage() {
     loadSeasons();
   }, []);
 
-  // 2. 단축 링크 진입 처리
   useEffect(() => {
     if (autoOpenRegister && session?.user?.role === "ADMIN") {
       setIsModalOpen(true);
     }
   }, [autoOpenRegister, session]);
 
-  // 3. 경기 목록 로드
   const loadGames = async () => {
     if (!selectedSeasonId) return;
     setIsLoading(true);
     setError(null);
     try {
-      const statusParam = activeTab === "confirmed" ? "CONFIRMED" : ""; // 예정된건 필터없이 가져와 프론트에서 분기처리
       const res = await fetch(`/api/games?seasonId=${selectedSeasonId}`);
       if (res.ok) {
         const data = await res.json();
@@ -96,9 +90,8 @@ export default function GamesPage() {
 
   useEffect(() => {
     loadGames();
-  }, [selectedSeasonId, activeTab]);
+  }, [selectedSeasonId]);
 
-  // 4. 경기 등록 처리
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
@@ -118,10 +111,7 @@ export default function GamesPage() {
       const res = await fetch("/api/games", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          seasonId: selectedSeasonId,
-          ...formData,
-        }),
+        body: JSON.stringify({ seasonId: selectedSeasonId, ...formData }),
       });
 
       const data = await res.json();
@@ -129,13 +119,7 @@ export default function GamesPage() {
         setFormError(data.error || "경기 등록에 실패했습니다.");
       } else {
         setIsModalOpen(false);
-        setFormData({
-          gameDate: "",
-          location: "",
-          opponentName: "",
-          gameType: "LEAGUE",
-          attendanceDeadline: "",
-        });
+        setFormData({ gameDate: "", location: "", opponentName: "", gameType: "LEAGUE", attendanceDeadline: "" });
         loadGames();
       }
     } catch (err) {
@@ -143,7 +127,6 @@ export default function GamesPage() {
     }
   };
 
-  // 5. 학생 출결 응답 토글 처리
   const handleAttendanceResponse = async (gameId: string, response: "ATTEND" | "ABSENT", reason: string = "") => {
     try {
       const res = await fetch(`/api/games/${gameId}/attendance`, {
@@ -153,7 +136,7 @@ export default function GamesPage() {
       });
 
       if (res.ok) {
-        loadGames(); // 새로고침
+        loadGames();
         setAbsentGameId(null);
         setAbsentReason("");
       } else {
@@ -167,23 +150,28 @@ export default function GamesPage() {
 
   const isStaff = session?.user?.role === "ADMIN" || session?.user?.role === "MANAGER";
 
-  // 필터링 적용
-  const filteredGames = games.filter((game) => {
-    if (activeTab === "confirmed") {
-      return game.status === "CONFIRMED";
-    } else {
-      return game.status !== "CONFIRMED";
-    }
-  });
+  // 캘린더 관련 계산
+  const getDaysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
+  const getFirstDayOfMonth = (year: number, month: number) => new Date(year, month, 1).getDay();
+
+  const prevMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
+  const nextMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
+
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
+  const daysInMonth = getDaysInMonth(year, month);
+  const firstDay = getFirstDayOfMonth(year, month);
+
+  const days = [];
+  for (let i = 0; i < firstDay; i++) days.push(null);
+  for (let i = 1; i <= daysInMonth; i++) days.push(i);
 
   return (
     <div className="space-y-6">
-      
-      {/* 1. 상단 타이틀 */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">경기 일정 및 결과</h1>
-          <p className="text-xs text-muted-foreground">이번 시즌에 예정된 경기와 지난 경기 스코어보드를 확인합니다.</p>
+          <h1 className="text-2xl font-bold tracking-tight">훈련 및 경기 일정 (캘린더)</h1>
+          <p className="text-xs text-muted-foreground">시즌 훈련 및 경기 일정을 한눈에 확인합니다.</p>
         </div>
 
         <div className="flex items-center gap-3">
@@ -213,31 +201,6 @@ export default function GamesPage() {
         </div>
       </div>
 
-      {/* 2. 탭 전환 */}
-      <div className="flex border-b border-customBorder-light dark:border-customBorder-dark">
-        <button
-          onClick={() => setActiveTab("scheduled")}
-          className={`px-5 py-3 text-xs font-bold transition-all border-b-2 ${
-            activeTab === "scheduled"
-              ? "border-primary-light text-primary-light dark:border-primary-dark dark:text-primary-dark font-extrabold"
-              : "border-transparent text-muted-foreground hover:text-customText-light"
-          }`}
-        >
-          다가오는 경기 ({games.filter((g) => g.status !== "CONFIRMED").length})
-        </button>
-        <button
-          onClick={() => setActiveTab("confirmed")}
-          className={`px-5 py-3 text-xs font-bold transition-all border-b-2 ${
-            activeTab === "confirmed"
-              ? "border-primary-light text-primary-light dark:border-primary-dark dark:text-primary-dark font-extrabold"
-              : "border-transparent text-muted-foreground hover:text-customText-light"
-          }`}
-        >
-          기록 확정 경기 ({games.filter((g) => g.status === "CONFIRMED").length})
-        </button>
-      </div>
-
-      {/* 에러 상태 */}
       {error && (
         <div className="flex items-center gap-2 p-4 bg-danger-light/10 text-danger-light text-xs rounded-2xl">
           <AlertCircle className="w-4 h-4" />
@@ -245,154 +208,83 @@ export default function GamesPage() {
         </div>
       )}
 
-      {/* 3. 경기 목록 렌더링 */}
-      {isLoading ? (
-        <div className="text-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-light dark:border-primary-dark mx-auto"></div>
+      {/* 캘린더 UI */}
+      <div className="bg-surface-light dark:bg-surface-dark border border-customBorder-light dark:border-customBorder-dark rounded-3xl p-6 shadow-sm">
+        {/* 캘린더 헤더 */}
+        <div className="flex items-center justify-between mb-6">
+          <button onClick={prevMonth} className="p-2 hover:bg-muted dark:hover:bg-muted-foreground/10 rounded-full transition-colors">
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <h2 className="text-xl font-bold">{year}년 {month + 1}월</h2>
+          <button onClick={nextMonth} className="p-2 hover:bg-muted dark:hover:bg-muted-foreground/10 rounded-full transition-colors">
+            <ChevronRight className="w-5 h-5" />
+          </button>
         </div>
-      ) : filteredGames.length === 0 ? (
-        <div className="p-12 text-center border-2 border-dashed border-customBorder-light dark:border-customBorder-dark rounded-3xl text-sm text-muted-foreground">
-          조건에 부합하는 경기 일정이 아직 없습니다.
+
+        {/* 요일 헤더 */}
+        <div className="grid grid-cols-7 gap-px mb-2 text-center text-xs font-bold text-muted-foreground">
+          <div className="text-danger-light">일</div>
+          <div>월</div>
+          <div>화</div>
+          <div>수</div>
+          <div>목</div>
+          <div>금</div>
+          <div className="text-primary-light">토</div>
         </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {filteredGames.map((game) => {
-            const myResponse = game.attendances?.[0]?.response || "UNDECIDED";
-            const deadlinePassed = new Date() > new Date(game.attendanceDeadline);
+
+        {/* 캘린더 그리드 */}
+        <div className="grid grid-cols-7 gap-px bg-customBorder-light dark:bg-customBorder-dark border border-customBorder-light dark:border-customBorder-dark rounded-xl overflow-hidden">
+          {days.map((day, idx) => {
+            const isToday = day && year === new Date().getFullYear() && month === new Date().getMonth() && day === new Date().getDate();
             
+            // 이 날짜에 해당하는 경기 필터링
+            const dayGames = day ? games.filter(g => {
+              const gameDate = new Date(g.gameDate);
+              return gameDate.getFullYear() === year && gameDate.getMonth() === month && gameDate.getDate() === day;
+            }) : [];
+
             return (
-              <div
-                key={game.id}
-                className="bg-surface-light dark:bg-surface-dark border border-customBorder-light dark:border-customBorder-dark rounded-3xl p-6 shadow-sm flex flex-col justify-between space-y-4 hover:shadow-md transition-shadow relative overflow-hidden"
-              >
-                {/* 상단 뱃지 */}
-                <div className="flex justify-between items-center">
-                  <span className="text-[10px] px-2 py-0.5 font-semibold bg-primary-light/5 text-primary-light dark:text-primary-dark rounded-md border border-primary-light/10">
-                    {game.gameType === "LEAGUE" ? "리그전" : game.gameType === "PRACTICE" ? "연습경기" : game.gameType === "TOURNAMENT" ? "토너먼트" : "친선전"}
-                  </span>
-                  <span className={`text-[10px] font-bold ${
-                    game.status === "CONFIRMED"
-                      ? "text-success-light"
-                      : game.status === "RECORD_PENDING"
-                      ? "text-warning-light"
-                      : game.status === "IN_PROGRESS"
-                      ? "text-indigo-500"
-                      : "text-muted-foreground"
-                  }`}>
-                    {game.status === "CONFIRMED"
-                      ? "기록 확정"
-                      : game.status === "RECORD_PENDING"
-                      ? "기록 입력 대기"
-                      : game.status === "IN_PROGRESS"
-                      ? "경기 진행 중"
-                      : "예정됨"}
-                  </span>
-                </div>
-
-                {/* 상대팀 정보 */}
-                <div className="flex justify-between items-center">
-                  <div className="space-y-1">
-                    <h3 className="text-lg font-black">vs {game.opponentName}</h3>
-                    <div className="space-y-1 text-xs text-muted-foreground">
-                      <div className="flex items-center gap-1.5">
-                        <Calendar className="w-3.5 h-3.5" />
-                        <span>{new Date(game.gameDate).toLocaleString("ko-KR", { dateStyle: "long", timeStyle: "short" })}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <MapPin className="w-3.5 h-3.5" />
-                        <span>{game.location}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 스코어보드 (종료 경기일 때) */}
-                  {game.status === "CONFIRMED" && (
-                    <div className="text-right space-y-1">
-                      <div className="text-2xl font-black">
-                        {game.ourScore} : {game.opponentScore}
-                      </div>
-                      <span className={`text-xxs px-2 py-0.5 font-bold rounded-md ${
-                        game.result === "WIN"
-                          ? "bg-success-light/10 text-success-light border border-success-light/20"
-                          : game.result === "LOSS"
-                          ? "bg-danger-light/10 text-danger-light border border-danger-light/20"
-                          : "bg-muted-foreground/10 text-muted-foreground border border-muted-foreground/20"
-                      }`}>
-                        {game.result === "WIN" ? "WIN" : game.result === "LOSS" ? "LOSE" : "DRAW"}
+              <div key={idx} className={`min-h-[120px] bg-surface-light dark:bg-surface-dark p-2 flex flex-col ${!day ? 'bg-muted/30 dark:bg-muted-foreground/5' : ''}`}>
+                {day && (
+                  <>
+                    <div className="flex justify-between items-start mb-2">
+                      <span className={`text-sm font-semibold w-7 h-7 flex items-center justify-center rounded-full ${isToday ? 'bg-primary-light text-white dark:bg-primary-dark dark:text-customBg-dark shadow-sm' : ''}`}>
+                        {day}
                       </span>
                     </div>
-                  )}
-                </div>
-
-                {/* 하단 사전 출결 체크 영역 (예정 경기일 때 노출) */}
-                {game.status !== "CONFIRMED" && (
-                  <div className="pt-4 border-t border-customBorder-light dark:border-customBorder-dark space-y-3">
-                    <div className="flex justify-between items-center text-xs">
-                      <div className="flex items-center gap-1 text-muted-foreground">
-                        <Clock className="w-3.5 h-3.5" />
-                        <span>출결 마감: {new Date(game.attendanceDeadline).toLocaleDateString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
-                      </div>
-                      <span className={`text-xxs font-extrabold px-2 py-0.5 rounded-full ${
-                        myResponse === "ATTEND"
-                          ? "bg-success-light/10 text-success-light"
-                          : myResponse === "ABSENT"
-                          ? "bg-danger-light/10 text-danger-light"
-                          : "bg-warning-light/10 text-warning-light"
-                      }`}>
-                        내 선택: {myResponse === "ATTEND" ? "참석" : myResponse === "ABSENT" ? "불참" : "미정"}
-                      </span>
+                    <div className="flex flex-col gap-1.5 overflow-y-auto">
+                      {dayGames.map(g => (
+                        <Link key={g.id} href={`/games/${g.id}`} className="block">
+                          <div className={`p-2 rounded-lg border text-xs cursor-pointer hover:shadow-md transition-shadow ${
+                            g.status === "CONFIRMED" ? "bg-success-light/10 border-success-light/30 text-success-light" :
+                            g.status === "RECORD_PENDING" ? "bg-warning-light/10 border-warning-light/30 text-warning-light" :
+                            "bg-primary-light/5 border-primary-light/20 text-primary-light dark:text-primary-dark"
+                          }`}>
+                            <div className="font-bold flex items-center justify-between mb-1">
+                              <span className="truncate pr-1">vs {g.opponentName}</span>
+                            </div>
+                            <div className="flex items-center gap-1 opacity-80 text-[10px]">
+                              <Clock className="w-3 h-3" />
+                              {new Date(g.gameDate).toLocaleTimeString("ko-KR", { hour: '2-digit', minute: '2-digit' })}
+                            </div>
+                            {g.status === "CONFIRMED" && (
+                              <div className="mt-1 font-bold">
+                                {g.ourScore} : {g.opponentScore} {g.result === "WIN" ? "(승)" : g.result === "LOSS" ? "(패)" : "(무)"}
+                              </div>
+                            )}
+                          </div>
+                        </Link>
+                      ))}
                     </div>
-
-                    {!deadlinePassed ? (
-                      <div className="grid grid-cols-2 gap-2">
-                        <button
-                          onClick={() => handleAttendanceResponse(game.id, "ATTEND")}
-                          className={`py-2 text-xs font-bold rounded-xl flex items-center justify-center gap-1 border transition-all ${
-                            myResponse === "ATTEND"
-                              ? "bg-success-light text-white border-success-light shadow-md"
-                              : "bg-transparent hover:bg-muted border-customBorder-light dark:border-customBorder-dark"
-                          }`}
-                        >
-                          <Check className="w-3.5 h-3.5" /> 참석
-                        </button>
-                        <button
-                          onClick={() => {
-                            setAbsentGameId(game.id);
-                            setAbsentReason("");
-                          }}
-                          className={`py-2 text-xs font-bold rounded-xl flex items-center justify-center gap-1 border transition-all ${
-                            myResponse === "ABSENT"
-                              ? "bg-danger-light text-white border-danger-light shadow-md"
-                              : "bg-transparent hover:bg-muted border-customBorder-light dark:border-customBorder-dark"
-                          }`}
-                        >
-                          <X className="w-3.5 h-3.5" /> 불참
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="text-[10px] text-center text-muted-foreground">출결 응답이 마감되었습니다. 변경이 불가능합니다.</div>
-                    )}
-                  </div>
+                  </>
                 )}
-
-                {/* 상세 페이지 이동 버튼 */}
-                <div className="pt-2">
-                  <Link
-                    href={`/games/${game.id}`}
-                    className="w-full py-2 bg-muted hover:bg-muted/80 dark:bg-muted-foreground/5 dark:hover:bg-muted-foreground/10 text-xs font-bold rounded-xl flex items-center justify-center gap-1 transition-all"
-                  >
-                    상세보기 및 라인업/기록 관리
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  </Link>
-                </div>
-
               </div>
             );
           })}
         </div>
-      )}
+      </div>
 
-      {/* 4. 경기 등록 모달 (교사/매니저 전용) */}
+      {/* 4. 경기 등록 모달 (생략/유지) */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="w-full max-w-md bg-white dark:bg-surface-dark border border-customBorder-light dark:border-customBorder-dark rounded-3xl p-6 shadow-2xl space-y-4">
@@ -434,6 +326,7 @@ export default function GamesPage() {
                     <option value="PRACTICE">연습경기</option>
                     <option value="TOURNAMENT">토너먼트</option>
                     <option value="FRIENDLY">친선전</option>
+                    <option value="TRAINING">훈련</option>
                   </select>
                 </div>
                 <div className="space-y-1">
@@ -472,44 +365,9 @@ export default function GamesPage() {
                 type="submit"
                 className="w-full py-2.5 mt-2 bg-primary-light hover:bg-primary-light/90 dark:bg-primary-dark dark:text-customBg-dark font-bold text-xs rounded-xl shadow-md active:scale-98 transition-all"
               >
-                경기 생성 및 전체 알림 전송
+                경기 생성
               </button>
             </form>
-          </div>
-        </div>
-      )}
-
-      {/* 5. 불참 사유 작성 모달 */}
-      {absentGameId && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-sm bg-white dark:bg-surface-dark border border-customBorder-light dark:border-customBorder-dark rounded-3xl p-6 shadow-2xl space-y-4">
-            <div>
-              <h2 className="text-sm font-bold">불참 사유 작성</h2>
-              <p className="text-xxs text-muted-foreground">불참하시는 사유를 간단히 적어주세요. (선택)</p>
-            </div>
-
-            <input
-              type="text"
-              placeholder="예: 학원 일정, 감기 몸살 등"
-              value={absentReason}
-              onChange={(e) => setAbsentReason(e.target.value)}
-              className="w-full px-3 py-2.5 text-xs bg-muted/40 border border-customBorder-light dark:border-customBorder-dark rounded-xl focus:outline-none"
-            />
-
-            <div className="grid grid-cols-2 gap-3 pt-2">
-              <button
-                onClick={() => setAbsentGameId(null)}
-                className="py-2 bg-muted hover:bg-muted/80 text-xs font-bold rounded-xl"
-              >
-                취소
-              </button>
-              <button
-                onClick={() => handleAttendanceResponse(absentGameId, "ABSENT", absentReason)}
-                className="py-2 bg-danger-light text-white font-bold text-xs rounded-xl shadow-md"
-              >
-                불참 제출
-              </button>
-            </div>
           </div>
         </div>
       )}

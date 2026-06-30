@@ -52,7 +52,7 @@ export default function LoginPage() {
           <div className="inline-flex p-4 bg-primary-light/10 dark:bg-primary-dark/20 text-primary-light dark:text-primary-dark rounded-2xl mb-2">
             <Shield className="w-8 h-8" />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight">한가람 타이탄즈</h1>
+          <h1 className="text-2xl font-bold tracking-tight">언주중학교 스포츠클럽 야구부</h1>
           <p className="text-xs text-muted-foreground">학교 스포츠클럽 야구부 경기분석 및 출결 시스템</p>
         </div>
 
